@@ -87,5 +87,7 @@
     "rollup-plugin-postcss": "^2.0.3",
     "rollup-plugin-url": "^3.0.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "yarn": "^1.22.4"
+  }
 }
