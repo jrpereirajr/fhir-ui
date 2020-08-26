@@ -4,7 +4,6 @@ import { Toolbar, Tooltip, IconButton, Typography } from '@material-ui/core'
 import {
   Delete as DeleteIcon,
   FilterList as FilterListIcon,
-  SelectAllRounded,
 } from '@material-ui/icons'
 import { lighten, makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'

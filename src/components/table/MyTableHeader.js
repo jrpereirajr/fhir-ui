@@ -8,7 +8,6 @@ import {
 } from '@material-ui/core'
 import {
   Delete as DeleteIcon,
-  FilterList as FilterListIcon,
 } from '@material-ui/icons'
 import { lighten, makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'

@@ -14,13 +14,21 @@ import {
   Typography,
   Paper,
   IconButton,
+	Button,
   Tooltip,
   FormControlLabel,
-  Switch,
 } from '@material-ui/core'
-import PatientCard from '../patient/PatientCard'
+import AppBar from "@material-ui/core/AppBar";
+import Tabs from "@material-ui/core/Tabs";
+import Tab from "@material-ui/core/Tab";
+import Box from "@material-ui/core/Box";
+
+import PatientBanner from '../patient/PatientBanner'
 import MyTableHeader from '../table/MyTableHeader'
 import MyTableToolbar from '../table/MyTableToolbar'
+import AllergyTable from '../allergy/AllergyTable'
+import ConditionTable from '../condition/ConditionTable'
+import ObservationTable from '../observation/ObservationTable'
 
 const desc = (a, b, orderBy) => {
   if (b[orderBy] < a[orderBy]) {
@@ -88,11 +96,50 @@ const useStyles = makeStyles(theme => ({
   tableWrapper: {
     overflowX: 'auto',
   },
-}))
+}));
+
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box p={3}>
+          <Typography>{children}</Typography>
+        </Box>
+      )}
+    </div>
+  );
+}
+
+TabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.any.isRequired,
+  value: PropTypes.any.isRequired
+};
+
+function a11yProps(index) {
+  return {
+    id: `simple-tab-${index}`,
+    "aria-controls": `simple-tabpanel-${index}`
+  };
+}
+
+const useStylesTab = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+    backgroundColor: theme.palette.background.paper
+  }
+}));
 
 const MyPatientTable = ({
   patients = [],
-  onRemoveRecord,
   tableTitle,
   tableRowSize,
   tableHeight,
@@ -165,17 +212,18 @@ const MyPatientTable = ({
   const isSelected = name => selected.indexOf(name) !== -1
 
   const emptyRows =
-    rowsPerPage - Math.min(rowsPerPage, patients.length - page * rowsPerPage)
+    rowsPerPage - Math.min(rowsPerPage, patients.length - page * rowsPerPage);
 
-  const [showResults, setShowResults] = React.useState(true)
+  const classesTab = useStylesTab();
   
   return (
     <div className={classes.root}>
-      <Paper className={classes.paper}>
+      <Paper className={classes.paper}
+        style={
+          tableHeight ? { maxHeight: tableHeight, overflow: 'auto' } : null
+        }>
         <MyTableToolbar
-          selected={selected}
           tableTitle={tableTitle}
-          onRemoveRecord={onRemoveRecord}
         />
         <div className={classes.tableWrapper}>
           <Table
@@ -198,76 +246,9 @@ const MyPatientTable = ({
               {stableSort(patients, getSorting(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
-                  const isItemSelected = isSelected(row.id)
-                  const labelId = `enhanced-table-patient-${index}`
-									const [isShowDetails, setShowDetails] = React.useState(false);
-									const getDetailsHandler = () => {
-										//row.details = onGetDetailsData(row) || {}; 
-										//row.setShowDetails(!row.isShowDetails);
-										if (onGetDetailsData) {
-											onGetDetailsData(row).then(patientData => {
-												row.details = patientData || {}; 
-												row.setShowDetails(!row.isShowDetails);
-											});
-										}
-										return false;
-									}
-									row.isShowDetails = isShowDetails;
-									row.setShowDetails = setShowDetails;
-
+									row.details = null;
                   return (
-										<React.Fragment>
-											<TableRow
-												hover
-												onClick={event => handleClick(event, row)}
-												tabIndex={-1}
-												key={row.id}
-											>
-												<TableCell>
-													<a href="#" onClick={getDetailsHandler}>
-														{!row.isShowDetails ? 'More' : 'Less'}
-													</a>
-													{row.identifier[0].value}
-												</TableCell>
-												<TableCell
-												component="th"
-												id={labelId}
-												scope="row"
-												padding="none"
-												>
-												{row.name[0].text
-													? row.name[0].text
-													: `${row.name[0].given.join(' ')} ${
-														row.name[0].family
-													}`}
-												</TableCell>
-												<TableCell>{row.birthDate}</TableCell>
-												<TableCell>{row.gender}</TableCell>
-												<TableCell>
-												{Array.isArray(row.telecom) &&
-													row.telecom
-													.map(el => (el.system === 'phone' ? el.value : ''))
-													.filter(el => !!el)}
-												</TableCell>
-												<TableCell>
-												{Array.isArray(row.communication) &&
-													row.communication[0].language.text}
-												</TableCell>
-												<TableCell>
-												{row.managingOrganization &&
-													row.managingOrganization.reference}
-												</TableCell>
-											</TableRow>
-											{ row.isShowDetails ? 
-												<TableRow>
-													<TableCell colSpan={7}>
-														<PatientCard patient={row.details}/>
-													</TableCell>
-												</TableRow> 
-												: null 
-											}
-										</React.Fragment>
-                  )
+										<MyPatientTableRow row={row} onGetDetailsData={onGetDetailsData}></MyPatientTableRow>)
                 })}
               {emptyRows > 0 && (
                 <TableRow style={{ height: (dense ? 33 : 53) * emptyRows }}>
@@ -299,13 +280,198 @@ const MyPatientTable = ({
 
 MyPatientTable.propTypes = {
   patients: PropTypes.arrayOf(PropTypes.object).isRequired,
-  onRemoveRecord: PropTypes.func,
   tableTitle: PropTypes.string,
   tableRowSize: PropTypes.string,
   tableHeight: PropTypes.number,
   stickyHeader: PropTypes.string,
   defaultRowsPerPage: PropTypes.number,
   onGetDetailsData: PropTypes.func,
+}
+
+class MyPatientTableRow extends React.Component {
+	
+  constructor(props) {
+    super(props);
+    this.state = {
+			isShowDetails: false,
+			value: 0,
+			allergies: [],
+			conditions: [],
+			observations: []
+		};
+  }
+
+  componentDidMount() {
+  }
+
+  componentWillUnmount() {
+  }
+	
+	getDetailsHandler() {
+		if (this.props.onGetDetailsData) {
+			this.props.onGetDetailsData(this.props.row, 'Patient').then(data => {
+				this.setState({isShowDetails: !this.props.row.details ? true : !this.state.isShowDetails});
+				this.props.row.details = data[0] || {};
+				this.handleChangeTab(null, 0);
+			});
+		}
+	}
+	
+	handleChangeTab(event, newValue) {
+		let promise = Promise.resolve();
+		switch(newValue) {
+			case 0:
+				promise = this.getAllergiesHandler();
+				break;
+			case 1:
+				promise = this.getConditionsHandler();
+				break;
+			case 2:
+				promise = this.getObservationsHandler();
+				break;
+		}
+		promise.then(() => this.setState({value: newValue}));
+	};
+									
+	getAllergiesHandler() {
+		if (this.props.onGetDetailsData) {
+			return this.props.onGetDetailsData(this.props.row, 'AllergyIntolerance').then(data => {
+				this.state.allergies = data || [];
+			});
+		}
+		return Promise.resolve();
+	}
+	
+	getConditionsHandler(){
+		if (this.props.onGetDetailsData) {
+			return this.props.onGetDetailsData(this.props.row, 'Conditions').then(data => {
+				this.state.conditions = data || [];
+			});
+		}
+		return Promise.resolve();
+	}
+	
+	getObservationsHandler() {
+		if (this.props.onGetDetailsData) {
+			return this.props.onGetDetailsData(this.props.row, 'Observations').then(data => {
+				this.state.observations = data || [];
+			});
+		}
+		return Promise.resolve();
+	}
+		
+  getClassesTab() {
+		return useStylesTab();
+	}
+
+  render() {
+    return (
+										<React.Fragment>
+											<TableRow
+												hover
+												tabIndex={-1}
+												key={this.props.row.id}
+											>
+												<TableCell>
+													<Button onClick={() => this.getDetailsHandler()}>{!this.state.isShowDetails || !this.props.row.details ? 'More' : 'Less'}</Button>
+													{this.props.row.identifier[0].value}
+												</TableCell>
+												<TableCell
+												component="th"
+												id={`enhanced-table-patient-${this.props.row.id}`}
+												scope="row"
+												padding="none"
+												>
+												{this.props.row.name[0].text
+													? this.props.row.name[0].text
+													: `${this.props.row.name[0].given.join(' ')} ${
+														this.props.row.name[0].family
+													}`}
+												</TableCell>
+												<TableCell>{this.props.row.birthDate}</TableCell>
+												<TableCell>{this.props.row.gender}</TableCell>
+												<TableCell>
+												{Array.isArray(this.props.row.telecom) &&
+													this.props.row.telecom
+													.map(el => (el.system === 'phone' ? el.value : ''))
+													.filter(el => !!el)}
+												</TableCell>
+												<TableCell>
+												{Array.isArray(this.props.row.communication) &&
+													this.props.row.communication[0].language.text}
+												</TableCell>
+												<TableCell>
+												{this.props.row.managingOrganization &&
+													this.props.row.managingOrganization.reference}
+												</TableCell>
+											</TableRow>
+											{ this.state.isShowDetails && this.props.row.details ? 
+												<TableRow>
+													<TableCell colSpan={7}>
+														<PatientBanner patient={this.props.row.details || {}}/>
+														<div>
+															<AppBar position="static">
+																<Tabs
+																	value={this.state.value}
+																	onChange={(event, newValue) => this.handleChangeTab(event, newValue)}
+																	aria-label="simple tabs example"
+																>
+																	<Tab label="Allergy intolerance" {...a11yProps(0)} />
+																	<Tab label="Conditions" {...a11yProps(1)} />
+																	<Tab label="Observations" {...a11yProps(2)} />
+																</Tabs>
+															</AppBar>
+															<TabPanel value={this.state.value} index={0}>
+																{ this.state.allergies && this.state.allergies.length ? 
+																<AllergyTable 
+																	allergies={this.state.allergies}
+																	tableTitle="Allergy List"
+																	tableRowSize="small"
+																	hideActionIcons={true}
+																	hideCheckboxes={true}
+																/>
+																: "No alergies found"
+																}
+															</TabPanel>
+															<TabPanel value={this.state.value} index={1}>
+																{ this.state.allergies && this.state.allergies.length ? 
+																<ConditionTable
+																	conditions={this.state.conditions}
+																	tableTitle="Condition List"
+																	tableRowSize="medium"
+																	hideDevices={true}
+																	hideCheckboxes={true}
+																	hideRecordedDate={true}
+																	hideEncounter={true}
+																	hideVerificationStatus={true}
+																	stickyHeader={true}
+																	tableHeight={360}
+																/>
+																: "No conditions found"
+																}
+															</TabPanel>
+															<TabPanel value={this.state.value} index={2}>
+																{ this.state.observations && this.state.observations.length ? 
+																<ObservationTable
+																	observations={this.state.observations}
+																	tableTitle="Observation List"
+																	tableRowSize="medium"
+																	hideDevices={true}
+																	hideCheckboxes={true}
+																	stickyHeader={true}
+																	tableHeight={360}
+																/>
+																: "No observations found"
+																}
+															</TabPanel>
+														</div>
+													</TableCell>
+												</TableRow> 
+												: null
+											}
+										</React.Fragment>
+    );
+  }
 }
 
 export default MyPatientTable
